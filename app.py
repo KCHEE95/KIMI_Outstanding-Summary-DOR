@@ -267,9 +267,27 @@ class DORRecord:
 # ============================================================================
 
 class DataManager:
-    def __init__(self, data_dir: str = "data"):
-        self.data_dir = Path(data_dir)
-        self.data_dir.mkdir(exist_ok=True)
+    def __init__(self, data_dir: str = None):
+        # Streamlit Cloud compatible: use /tmp for writes
+        if data_dir is None:
+            # Try local first, fallback to /tmp
+            local_dir = Path("data")
+            tmp_dir = Path("/tmp") / "production_dor_data"
+
+            try:
+                local_dir.mkdir(parents=True, exist_ok=True)
+                # Test write permission
+                test_file = local_dir / ".write_test"
+                test_file.write_text("test")
+                test_file.unlink()
+                self.data_dir = local_dir
+            except (PermissionError, OSError):
+                tmp_dir.mkdir(parents=True, exist_ok=True)
+                self.data_dir = tmp_dir
+        else:
+            self.data_dir = Path(data_dir)
+            self.data_dir.mkdir(parents=True, exist_ok=True)
+
         self.parts_file = self.data_dir / "parts_config.json"
         self.dor_file = self.data_dir / "dor_records.csv"
         self.parts = {}
@@ -366,6 +384,8 @@ class DataManager:
         self._save_parts()
 
     def _save_parts(self):
+        # Ensure directory exists before writing
+        self.data_dir.mkdir(parents=True, exist_ok=True)
         data = {'parts': []}
         for part in self.parts.values():
             p_data = {
@@ -393,6 +413,8 @@ class DataManager:
             json.dump(data, f, indent=2)
 
     def save_dor_record(self, record: DORRecord):
+        # Ensure directory exists before writing
+        self.data_dir.mkdir(parents=True, exist_ok=True)
         new_row = pd.DataFrame([{
             'date': record.date,
             'part_num': record.part_num,
