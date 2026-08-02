@@ -29,7 +29,7 @@ from pathlib import Path
 # ============================================================================
 st.set_page_config(
     page_title="Production DOR Dashboard",
-    page_icon="🏭",
+    page_icon="馃彮",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -452,16 +452,16 @@ class DataManager:
         rate = (completed_ops / total_ops * 100) if total_ops > 0 else 0
 
         if rate >= 100:
-            status = "已完成"
+            status = "Completed"
             color = "normal"
         elif rate >= 80:
-            status = "正常"
+            status = "Normal"
             color = "normal"
         elif rate >= 50:
-            status = "滞后"
+            status = "Delayed"
             color = "warning"
         else:
-            status = "异常"
+            status = "Abnormal"
             color = "danger"
 
         return {
@@ -476,7 +476,7 @@ class DataManager:
 
     def get_parts_by_customer(self, customer: str = None):
         parts = list(self.parts.values())
-        if customer and customer != "全部客户":
+        if customer and customer != "All Customers":
             parts = [p for p in parts if p.customer == customer]
         return parts
 
@@ -571,36 +571,36 @@ def render_operation_flow(operations, current_op: str = ""):
 
 def render_summary_page(dm: DataManager):
     st.markdown("""
-    <h1 style="margin: 0; font-size: 26px; font-weight: 700;">&#128202; 生产汇总看板</h1>
+    <h1 style="margin: 0; font-size: 26px; font-weight: 700;">&#128202; Production Summary Board</h1>
     <p style="margin: 6px 0 24px 0; color: #94a3b8; font-size: 13px;">
-        数据: Epicor BAQ | 状态: 手动更新 DOR | 共追踪 50 Parts
+        Data: Epicor BAQ | Status: Manual DOR Update | Tracking 50 Parts
     </p>
     """, unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns([2, 2, 3, 1])
 
     with col1:
-        customers = ["全部客户"] + dm.get_customers()
-        selected_customer = st.selectbox("&#128100; 选择客户", customers, key="summary_customer")
+        customers = ["All Customers"] + dm.get_customers()
+        selected_customer = st.selectbox("&#128100; Select Customer", customers, key="summary_customer")
 
     with col2:
-        search_part = st.text_input("&#128269; 筛选 Part Number", placeholder="输入零件号...", key="summary_search")
+        search_part = st.text_input("&#128269; Filter Part Number", placeholder="Enter part number...", key="summary_search")
 
     with col3:
         status_filter = st.segmented_control(
-            "状态筛选",
-            options=["全部", "&#9989; 正常", "&#9888; 滞后", "&#128308; 异常", "&#128203; 未开工"],
-            default="全部",
+            "Status Filter",
+            options=["All", "&#9989; Normal", "&#9888; Delayed", "&#128308; Abnormal", "&#128203; Not Started"],
+            default="All",
             key="summary_status"
         )
 
     with col4:
         st.write("")
         st.write("")
-        if st.button("&#128229; 导出", key="summary_export"):
-            st.success("报表已生成！")
+        if st.button("&#128229; Export", key="summary_export"):
+            st.success("Report generated!")
 
-    all_parts = dm.get_parts_by_customer(selected_customer if selected_customer != "全部客户" else None)
+    all_parts = dm.get_parts_by_customer(selected_customer if selected_customer != "All Customers" else None)
     if search_part:
         all_parts = [p for p in all_parts if search_part.upper() in p.part_num.upper()]
 
@@ -608,25 +608,25 @@ def render_summary_page(dm: DataManager):
     customers_count = len(set(p.customer for p in all_parts))
 
     completion_data = [dm.get_completion_rate(p.part_num) for p in all_parts]
-    normal_count = sum(1 for c in completion_data if c['status'] == "正常")
-    warning_count = sum(1 for c in completion_data if c['status'] == "滞后")
-    danger_count = sum(1 for c in completion_data if c['status'] == "异常")
-    completed_count = sum(1 for c in completion_data if c['status'] == "已完成")
+    normal_count = sum(1 for c in completion_data if c['status'] == "Normal")
+    warning_count = sum(1 for c in completion_data if c['status'] == "Delayed")
+    danger_count = sum(1 for c in completion_data if c['status'] == "Abnormal")
+    completed_count = sum(1 for c in completion_data if c['status'] == "Completed")
     pending_count = total_parts - normal_count - warning_count - danger_count - completed_count
 
     cols = st.columns(6)
     with cols[0]:
-        render_kpi_card("客户", str(customers_count), "blue", "&#128100;")
+        render_kpi_card("Customers", str(customers_count), "blue", "&#128100;")
     with cols[1]:
         render_kpi_card("Parts", str(total_parts), "purple", "&#128230;")
     with cols[2]:
-        render_kpi_card("进行中", str(normal_count + warning_count + danger_count), "yellow", "&#128295;")
+        render_kpi_card("In Progress", str(normal_count + warning_count + danger_count), "yellow", "&#128295;")
     with cols[3]:
-        render_kpi_card("已完成", str(completed_count), "green", "&#9989;")
+        render_kpi_card("Completed", str(completed_count), "green", "&#9989;")
     with cols[4]:
-        render_kpi_card("异常", str(danger_count), "red", "&#9888;")
+        render_kpi_card("Abnormal", str(danger_count), "red", "&#9888;")
     with cols[5]:
-        render_kpi_card("未开工", str(pending_count), "gray", "&#128203;")
+        render_kpi_card("Not Started", str(pending_count), "gray", "&#128203;")
 
     st.markdown("<div style='margin: 20px 0;'></div>", unsafe_allow_html=True)
 
@@ -635,8 +635,8 @@ def render_summary_page(dm: DataManager):
     for customer in customers_in_view:
         customer_parts = [p for p in all_parts if p.customer == customer]
 
-        if status_filter and status_filter != "全部":
-            status_map = {"&#9989; 正常": "正常", "&#9888; 滞后": "滞后", "&#128308; 异常": "异常", "&#128203; 未开工": "未开工"}
+        if status_filter and status_filter != "All":
+            status_map = {"&#9989; Normal": "Normal", "&#9888; Delayed": "Delayed", "&#128308; Abnormal": "Abnormal", "&#128203; Not Started": "Not Started"}
             target_status = status_map.get(status_filter, "")
             customer_parts = [p for p in customer_parts 
                            if dm.get_completion_rate(p.part_num)['status'] == target_status]
@@ -651,13 +651,13 @@ def render_summary_page(dm: DataManager):
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <h3 style="margin: 0; font-size: 16px; font-weight: 600;">&#127970; {customer} &mdash; {len(customer_parts)} Parts</h3>
                 <span style="background: rgba(59,130,246,0.15); color: #60a5fa; padding: 5px 14px; border-radius: 20px; font-size: 12px;">
-                    平均完成率: {avg_rate:.0f}%
+                    Avg Completion: {avg_rate:.0f}%
                 </span>
             </div>
         """, unsafe_allow_html=True)
 
         header_cols = st.columns([2.2, 0.8, 0.9, 1.0, 1.0, 0.9, 1.1])
-        headers = ["Part Number / 工序数", "工单", "目标量", "完成率", "当前工序", "状态", "操作"]
+        headers = ["Part Number / Operations", "Jobs", "Target Qty", "Completion", "Current Op", "Status", "Action"]
         for col, header in zip(header_cols, headers):
             col.markdown(f"<p style='margin: 0; font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;'>{header}</p>", unsafe_allow_html=True)
 
@@ -683,11 +683,11 @@ def render_summary_page(dm: DataManager):
             total_ops = sum(len(sp.operations) for sp in part.sub_parts)
 
             color_map = {
-                "正常": ("#4ade80", "badge-normal"),
-                "滞后": ("#fbbf24", "badge-warning"),
-                "异常": ("#f87171", "badge-danger"),
-                "已完成": ("#4ade80", "badge-normal"),
-                "未开工": ("#60a5fa", "badge-pending")
+                "Normal": ("#4ade80", "badge-normal"),
+                "Delayed": ("#fbbf24", "badge-warning"),
+                "Abnormal": ("#f87171", "badge-danger"),
+                "Completed": ("#4ade80", "badge-normal"),
+                "Not Started": ("#60a5fa", "badge-pending")
             }
             color, badge_class = color_map.get(comp['status'], ("#94a3b8", "badge-pending"))
 
@@ -702,7 +702,7 @@ def render_summary_page(dm: DataManager):
                     <div>
                         <p style="margin: 0; font-size: 14px; font-weight: 600; color: #e2e8f0;">{part.part_num}</p>
                         <p style="margin: 3px 0 0 0; font-size: 11px; color: #94a3b8;">
-                            {ops_str}... <span style="color: #60a5fa;">({total_ops}工序)</span>
+                            {ops_str}... <span style="color: #60a5fa;">({total_ops} ops)</span>
                         </p>
                     </div>
                 </div>
@@ -718,15 +718,15 @@ def render_summary_page(dm: DataManager):
                 render_progress_bar(comp['rate'])
 
             with cols[4]:
-                op_color = "#60a5fa" if comp['status'] in ["正常", "进行中"] else "#f87171" if comp['status'] == "异常" else "#fbbf24"
+                op_color = "#60a5fa" if comp['status'] in ["Normal", "In Progress"] else "#f87171" if comp['status'] == "Abnormal" else "#fbbf24"
                 st.markdown(f"<div style='text-align: center;'><span style='background: {op_color}22; color: {op_color}; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 500;'>{current_op}</span></div>", unsafe_allow_html=True)
 
             with cols[5]:
                 st.markdown(f'<div style="text-align: center;"><span class="{badge_class}">{comp["status"]}</span></div>', unsafe_allow_html=True)
 
             with cols[6]:
-                btn_color = "#ef4444" if comp['status'] == "异常" else "#3b82f6"
-                btn_grad = "#dc2626" if comp['status'] == "异常" else "#2563eb"
+                btn_color = "#ef4444" if comp['status'] == "Abnormal" else "#3b82f6"
+                btn_grad = "#dc2626" if comp['status'] == "Abnormal" else "#2563eb"
                 st.markdown(f"""
                 <div style="text-align: center;">
                     <button style="background: linear-gradient(135deg, {btn_color}, {btn_grad}); border: none; border-radius: 8px; padding: 8px 16px; color: white; font-size: 12px; font-weight: 600; cursor: pointer;">
@@ -738,7 +738,7 @@ def render_summary_page(dm: DataManager):
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================================
-# DOR PAGE
+# DOR PAGE - FIXED: WIP / OUTPUT / REJECT columns
 # ============================================================================
 
 def render_dor_page(dm: DataManager, part_num: str):
@@ -754,25 +754,25 @@ def render_dor_page(dm: DataManager, part_num: str):
         <div>
             <h1 style="margin: 0; font-size: 24px; font-weight: 700;">&#128203; DOR &mdash; {part.part_num}</h1>
             <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">
-                {part.description} | {part.customer} | {part.part_type} | 目标量: <strong style="color: #fbbf24;">{part.target_qty:,} pcs</strong>
+                {part.description} | {part.customer} | {part.part_type} | Target: <strong style="color: #fbbf24;">{part.target_qty:,} pcs</strong>
             </p>
         </div>
         <div style="text-align: right;">
             <p style="margin: 0; font-size: 32px; font-weight: 800; color: {'#4ade80' if comp['rate'] >= 80 else '#fbbf24' if comp['rate'] >= 50 else '#f87171'};">
                 {comp['rate']:.0f}%
             </p>
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">整体完成率</p>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">Overall Completion</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 1, 3])
     with col1:
-        selected_date = st.date_input("&#128197; 选择日期", value=datetime.now(), key=f"dor_date_{part_num}")
+        selected_date = st.date_input("&#128197; Select Date", value=datetime.now(), key=f"dor_date_{part_num}")
     with col2:
         st.write("")
         st.write("")
-        if st.button("&#128260; 加载历史", key=f"dor_load_{part_num}"):
+        if st.button("&#128260; Load History", key=f"dor_load_{part_num}"):
             st.rerun()
     with col3:
         st.write("")
@@ -780,7 +780,7 @@ def render_dor_page(dm: DataManager, part_num: str):
     date_str = selected_date.strftime("%Y-%m-%d")
 
     for sub_part in part.sub_parts:
-        with st.expander(f"&#128230; {sub_part.part_num} &mdash; {sub_part.description} (目标: {sub_part.target_qty:,} pcs)", expanded=True):
+        with st.expander(f"&#128230; {sub_part.part_num} &mdash; {sub_part.description} (Target: {sub_part.target_qty:,} pcs)", expanded=True):
 
             current_op = ""
             for op in sub_part.operations:
@@ -801,13 +801,14 @@ def render_dor_page(dm: DataManager, part_num: str):
 
             render_operation_flow(sub_part.operations, current_op or sub_part.operations[0].name)
 
-            st.markdown("<h4 style='margin: 20px 0 12px 0; font-size: 14px;'>&#128221; 今日 DOR 填写</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='margin: 20px 0 12px 0; font-size: 14px;'>&#128221; Daily DOR Entry</h4>", unsafe_allow_html=True)
 
             with st.form(key=f"dor_form_{part_num}_{sub_part.part_num}"):
-                cols = st.columns([1.5, 1, 1, 1, 2, 1])
-                headers = ["工序", "目标量", "累计完成", "今日完成", "备注", ""]
+                # Header row: Operation | Target Qty | Cumulative | WIP | OUTPUT | REJECT | Note
+                cols = st.columns([1.3, 0.9, 1.0, 0.9, 0.9, 0.9, 1.8, 0.8])
+                headers = ["Operation", "Target", "Cumulative", "WIP", "OUTPUT", "REJECT", "Note", ""]
                 for col, header in zip(cols, headers):
-                    col.markdown(f"<p style='margin: 0; font-size: 11px; color: #94a3b8; font-weight: 600;'>{header}</p>", unsafe_allow_html=True)
+                    col.markdown(f"<p style='margin: 0; font-size: 11px; color: #94a3b8; font-weight: 600; text-align: center;'>{header}</p>", unsafe_allow_html=True)
 
                 existing = dm.get_dor_for_part(part_num, date_str)
                 form_data = []
@@ -818,19 +819,22 @@ def render_dor_page(dm: DataManager, part_num: str):
                         (existing['operation'] == op.name)
                     ]
 
+                    # Calculate cumulative output across all dates
                     cumul_df = dm.dor_records[
                         (dm.dor_records['part_num'] == part_num) &
                         (dm.dor_records['sub_part_num'] == sub_part.part_num) &
                         (dm.dor_records['operation'] == op.name)
                     ]
-                    cumulative = cumul_df['output'].sum() if not cumul_df.empty else 0
+                    cumulative_output = cumul_df['output'].sum() if not cumul_df.empty else 0
+                    cumulative_wip = cumul_df['wip'].sum() if not cumul_df.empty else 0
+                    cumulative_reject = cumul_df['reject'].sum() if not cumul_df.empty else 0
 
-                    row_cols = st.columns([1.5, 1, 1, 1, 2, 1])
+                    row_cols = st.columns([1.3, 0.9, 1.0, 0.9, 0.9, 0.9, 1.8, 0.8])
 
                     with row_cols[0]:
-                        op_color = "#f87171" if op.name == current_op and comp['status'] == "异常" else "#60a5fa" if op.name == current_op else "#94a3b8"
+                        op_color = "#f87171" if op.name == current_op and comp['status'] == "Abnormal" else "#60a5fa" if op.name == current_op else "#94a3b8"
                         st.markdown(f"""
-                        <div style="background: rgba(30,41,59,0.8); border: 1px solid {'#ef4444' if op.name == current_op and comp['status'] == '异常' else '#334155'}; 
+                        <div style="background: rgba(30,41,59,0.8); border: 1px solid {'#ef4444' if op.name == current_op and comp['status'] == 'Abnormal' else '#334155'}; 
                                     border-radius: 8px; padding: 10px 12px; color: {op_color}; font-size: 13px; font-weight: 600;">
                             {op.name}
                         </div>
@@ -840,22 +844,39 @@ def render_dor_page(dm: DataManager, part_num: str):
                         st.markdown(f"<p style='text-align: center; font-size: 13px; color: #94a3b8; padding-top: 10px;'>{sub_part.target_qty:,}</p>", unsafe_allow_html=True)
 
                     with row_cols[2]:
-                        st.markdown(f"<p style='text-align: center; font-size: 13px; color: #94a3b8; padding-top: 10px;'>{cumulative:,}</p>", unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div style='text-align: center; padding-top: 6px;'>
+                            <p style='margin: 0; font-size: 11px; color: #60a5fa;'>OUT: {cumulative_output:,}</p>
+                            <p style='margin: 0; font-size: 10px; color: #fbbf24;'>WIP: {cumulative_wip:,}</p>
+                            <p style='margin: 0; font-size: 10px; color: #f87171;'>REJ: {cumulative_reject:,}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
 
                     with row_cols[3]:
                         default_wip = int(op_existing.iloc[-1]['wip']) if not op_existing.empty else 0
-                        default_output = int(op_existing.iloc[-1]['output']) if not op_existing.empty else 0
-                        default_reject = int(op_existing.iloc[-1]['reject']) if not op_existing.empty else 0
-
-                        wip = st.number_input("WIP", min_value=0, value=default_wip, key=f"wip_{part_num}_{sub_part.part_num}_{op.name}", label_visibility="collapsed")
-                        output = st.number_input("OUTPUT", min_value=0, value=default_output, key=f"out_{part_num}_{sub_part.part_num}_{op.name}", label_visibility="collapsed")
-                        reject = st.number_input("REJECT", min_value=0, value=default_reject, key=f"rej_{part_num}_{sub_part.part_num}_{op.name}", label_visibility="collapsed")
+                        wip = st.number_input("WIP", min_value=0, value=default_wip, 
+                                            key=f"wip_{part_num}_{sub_part.part_num}_{op.name}", 
+                                            label_visibility="collapsed")
 
                     with row_cols[4]:
-                        note = st.text_input("Note", value=op_existing.iloc[-1]['note'] if not op_existing.empty else "", 
-                                           key=f"note_{part_num}_{sub_part.part_num}_{op.name}", label_visibility="collapsed")
+                        default_output = int(op_existing.iloc[-1]['output']) if not op_existing.empty else 0
+                        output = st.number_input("OUTPUT", min_value=0, value=default_output, 
+                                                 key=f"out_{part_num}_{sub_part.part_num}_{op.name}", 
+                                                 label_visibility="collapsed")
 
                     with row_cols[5]:
+                        default_reject = int(op_existing.iloc[-1]['reject']) if not op_existing.empty else 0
+                        reject = st.number_input("REJECT", min_value=0, value=default_reject, 
+                                                 key=f"rej_{part_num}_{sub_part.part_num}_{op.name}", 
+                                                 label_visibility="collapsed")
+
+                    with row_cols[6]:
+                        note = st.text_input("Note", 
+                                           value=op_existing.iloc[-1]['note'] if not op_existing.empty else "", 
+                                           key=f"note_{part_num}_{sub_part.part_num}_{op.name}", 
+                                           label_visibility="collapsed")
+
+                    with row_cols[7]:
                         st.write("")
 
                     form_data.append({
@@ -868,7 +889,7 @@ def render_dor_page(dm: DataManager, part_num: str):
 
                 submit_cols = st.columns([5, 1])
                 with submit_cols[1]:
-                    submitted = st.form_submit_button("&#128190; 提交 DOR", use_container_width=True)
+                    submitted = st.form_submit_button("&#128190; Submit DOR", use_container_width=True)
 
                 if submitted:
                     user_name = st.session_state.get('user_name', 'Anonymous')
@@ -885,16 +906,16 @@ def render_dor_page(dm: DataManager, part_num: str):
                             note=fd['note']
                         )
                         dm.save_dor_record(record)
-                    st.success("&#9989; DOR 已保存！")
+                    st.success("&#9989; DOR Saved Successfully!")
                     st.balloons()
 
-    st.markdown("<h3 style='margin: 24px 0 16px 0;'>&#128220; 历史 DOR 记录</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='margin: 24px 0 16px 0;'>&#128220; DOR History</h3>", unsafe_allow_html=True)
     hist_df = dm.get_dor_for_part(part_num)
     if not hist_df.empty:
         hist_df = hist_df.sort_values(['date', 'updated_at'], ascending=[False, False])
         st.dataframe(hist_df, use_container_width=True, hide_index=True)
     else:
-        st.info("暂无历史记录")
+        st.info("No history records yet")
 
 # ============================================================================
 # OUTSTANDING PAGE
@@ -902,32 +923,32 @@ def render_dor_page(dm: DataManager, part_num: str):
 
 def render_outstanding_page(dm: DataManager):
     st.markdown("""
-    <h1 style="margin: 0; font-size: 26px; font-weight: 700;">&#9888; Outstanding &#36861;&#36394;</h1>
+    <h1 style="margin: 0; font-size: 26px; font-weight: 700;">&#9888; Outstanding Tracking</h1>
     <p style="margin: 6px 0 24px 0; color: #94a3b8; font-size: 13px;">
-        基于 Epicor Outstanding Dashboard (Sales Order Lines) | 显示所有未完成的 Main Parts
+        Based on Epicor Outstanding Dashboard (Sales Order Lines) | Showing all incomplete Main Parts
     </p>
     """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([2, 2, 2])
     with col1:
-        customers = ["全部客户"] + dm.get_customers()
-        selected = st.selectbox("&#128100; 客户", customers, key="out_customer")
+        customers = ["All Customers"] + dm.get_customers()
+        selected = st.selectbox("&#128100; Customer", customers, key="out_customer")
     with col2:
-        priority = st.selectbox("&#128293; 优先级", ["全部", "&#128308; 高", "&#128993; 中", "&#128994; 低"], key="out_priority")
+        priority = st.selectbox("&#128293; Priority", ["All", "&#128308; High", "&#128993; Medium", "&#128994; Low"], key="out_priority")
     with col3:
-        overdue = st.toggle("&#9200; 仅显示逾期", value=False, key="out_overdue")
+        overdue = st.toggle("&#9200; Overdue Only", value=False, key="out_overdue")
 
-    parts = dm.get_parts_by_customer(selected if selected != "全部客户" else None)
+    parts = dm.get_parts_by_customer(selected if selected != "All Customers" else None)
 
     outstanding_data = []
     for part in parts:
         comp = dm.get_completion_rate(part.part_num)
-        if comp['status'] != "已完成":
+        if comp['status'] != "Completed":
             days_running = hash(part.part_num) % 30 + 1
             is_overdue = days_running > 20
-            priority_level = "&#128308; 高" if comp['status'] == "异常" else "&#128993; 中" if comp['status'] == "滞后" else "&#128994; 低"
+            priority_level = "&#128308; High" if comp['status'] == "Abnormal" else "&#128993; Medium" if comp['status'] == "Delayed" else "&#128994; Low"
 
-            if priority != "全部" and priority != priority_level:
+            if priority != "All" and priority != priority_level:
                 continue
             if overdue and not is_overdue:
                 continue
@@ -946,7 +967,7 @@ def render_outstanding_page(dm: DataManager):
             })
 
     if not outstanding_data:
-        st.success("&#127881; 所有 Parts 均已完成！")
+        st.success("&#127881; All Parts Completed!")
         return
 
     df = pd.DataFrame(outstanding_data)
@@ -954,14 +975,14 @@ def render_outstanding_page(dm: DataManager):
     st.markdown("<div style='margin: 16px 0;'></div>", unsafe_allow_html=True)
     cols = st.columns(4)
     with cols[0]:
-        render_kpi_card("待处理", str(len(df)), "yellow", "&#128203;")
+        render_kpi_card("Pending", str(len(df)), "yellow", "&#128203;")
     with cols[1]:
-        render_kpi_card("高优先级", str(len(df[df['priority'] == "&#128308; 高"])), "red", "&#128308;")
+        render_kpi_card("High Priority", str(len(df[df['priority'] == "&#128308; High"])), "red", "&#128308;")
     with cols[2]:
-        render_kpi_card("已逾期", str(len(df[df['overdue'] == True])), "red", "&#9200;")
+        render_kpi_card("Overdue", str(len(df[df['overdue'] == True])), "red", "&#9200;")
     with cols[3]:
         avg_comp = df['completion'].mean()
-        render_kpi_card("平均完成率", f"{avg_comp:.0f}%", "blue" if avg_comp >= 50 else "yellow", "&#128202;")
+        render_kpi_card("Avg Completion", f"{avg_comp:.0f}%", "blue" if avg_comp >= 50 else "yellow", "&#128202;")
 
     st.markdown("<div style='margin: 20px 0;'></div>", unsafe_allow_html=True)
 
@@ -970,7 +991,7 @@ def render_outstanding_page(dm: DataManager):
     """, unsafe_allow_html=True)
 
     for _, row in df.iterrows():
-        color = "#f87171" if row['status'] == "异常" else "#fbbf24" if row['status'] == "滞后" else "#60a5fa"
+        color = "#f87171" if row['status'] == "Abnormal" else "#fbbf24" if row['status'] == "Delayed" else "#60a5fa"
         bg_color = "rgba(239,68,68,0.04)" if row['overdue'] else "transparent"
 
         st.markdown(f"""
@@ -990,15 +1011,15 @@ def render_outstanding_page(dm: DataManager):
                 </span>
             </div>
             <div style="text-align: center;">
-                <span style="background: {'#ef4444' if row['priority'] == '&#128308; 高' else '#f59e0b' if row['priority'] == '&#128993; 中' else '#22c55e'}22; 
-                             color: {'#f87171' if row['priority'] == '&#128308; 高' else '#fbbf24' if row['priority'] == '&#128993; 中' else '#4ade80'}; 
+                <span style="background: {'#ef4444' if row['priority'] == '&#128308; High' else '#f59e0b' if row['priority'] == '&#128993; Medium' else '#22c55e'}22; 
+                             color: {'#f87171' if row['priority'] == '&#128308; High' else '#fbbf24' if row['priority'] == '&#128993; Medium' else '#4ade80'}; 
                              padding: 4px 10px; border-radius: 10px; font-size: 11px;">
                     {row['priority']}
                 </span>
             </div>
             <div style="text-align: center;">
                 <p style="margin: 0; font-size: 13px; color: {'#f87171' if row['overdue'] else '#94a3b8'};">
-                    {'&#9200; ' if row['overdue'] else ''}{row['days_running']} 天
+                    {'&#9200; ' if row['overdue'] else ''}{row['days_running']} days
                 </p>
             </div>
             <div style="text-align: center;">
@@ -1023,18 +1044,17 @@ def main():
         st.session_state.user_name = ""
 
     with st.sidebar:
-        st.header("&#128100; 用户信息")
-        st.session_state.user_name = st.text_input("你的名字", value=st.session_state.user_name or "同事A")
+        st.header("&#128100; User Info")
+        st.session_state.user_name = st.text_input("Your Name", value=st.session_state.user_name or "Colleague A")
         st.divider()
-        st.header("&#128202; 快捷导航")
-        if st.button("&#127968; Summary 看板", use_container_width=True):
+        st.header("&#128202; Quick Nav")
+        if st.button("&#127968; Summary Board", use_container_width=True):
             st.session_state.current_page = "summary"
         if st.button("&#9888; Outstanding", use_container_width=True):
             st.session_state.current_page = "outstanding"
         st.divider()
-        st.info("&#128161; 提示：\n- 每天填写 DOR\n- 异常请备注原因\n- 完成率自动计算")
+        st.info("&#128161; Tips:\n- Fill DOR daily\n- Add notes for abnormalities\n- Completion rate auto-calculated")
 
-    # Limit to first 8 parts for demo tabs
     part_keys = sorted(dm.parts.keys())[:8]
     tab_labels = ["&#128202; Summary", "&#9888; Outstanding"] + [f"&#128203; {p}" for p in part_keys]
 
