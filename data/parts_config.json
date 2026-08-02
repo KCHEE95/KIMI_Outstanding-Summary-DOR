@@ -1,0 +1,66 @@
+{
+  "parts": [
+    {
+      "part_num": "ANGLE-001",
+      "description": "Angle Bracket Assembly",
+      "customer": "ABC Manufacturing",
+      "part_type": "Assembly",
+      "target_qty": 1500,
+      "sub_parts": [
+        {
+          "part_num": "ANGLE-LEG-A",
+          "description": "Left Leg",
+          "target_qty": 1500,
+          "operations": [
+            {"name": "SAW", "seq": 0, "is_final": false},
+            {"name": "CNC1", "seq": 1, "is_final": false},
+            {"name": "SP1", "seq": 2, "is_final": false},
+            {"name": "WD", "seq": 3, "is_final": false},
+            {"name": "PK", "seq": 4, "is_final": false},
+            {"name": "Ship", "seq": 5, "is_final": true}
+          ]
+        },
+        {
+          "part_num": "ANGLE-LEG-B",
+          "description": "Right Leg",
+          "target_qty": 1500,
+          "operations": [
+            {"name": "SAW", "seq": 0, "is_final": false},
+            {"name": "CNC1", "seq": 1, "is_final": false},
+            {"name": "SP1", "seq": 2, "is_final": false},
+            {"name": "WD", "seq": 3, "is_final": false},
+            {"name": "PK", "seq": 4, "is_final": false},
+            {"name": "Ship", "seq": 5, "is_final": true}
+          ]
+        }
+      ]
+    },
+    {
+      "part_num": "BRACKET-SINGLE-002",
+      "description": "Single Mounting Bracket",
+      "customer": "XYZ Corp",
+      "part_type": "Single",
+      "target_qty": 2500,
+      "sub_parts": [
+        {
+          "part_num": "BRACKET-SINGLE-002",
+          "description": "Single Mounting Bracket",
+          "target_qty": 2500,
+          "operations": [
+            {"name": "SAW", "seq": 0, "is_final": false},
+            {"name": "CNC1", "seq": 1, "is_final": false},
+            {"name": "SP1", "seq": 2, "is_final": false},
+            {"name": "WD", "seq": 3, "is_final": false},
+            {"name": "SP2", "seq": 4, "is_final": false},
+            {"name": "CNC2", "seq": 5, "is_final": false},
+            {"name": "PCKL", "seq": 6, "is_final": false},
+            {"name": "BF", "seq": 7, "is_final": false},
+            {"name": "LCMARK", "seq": 8, "is_final": false},
+            {"name": "PK", "seq": 9, "is_final": false},
+            {"name": "Ship", "seq": 10, "is_final": true}
+          ]
+        }
+      ]
+    }
+  ]
+}
