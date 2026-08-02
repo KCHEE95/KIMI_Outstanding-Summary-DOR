@@ -1,0 +1,12 @@
+# Data files (generated at runtime)
+data/
+*.csv
+*.json
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Streamlit
+.streamlit/secrets.toml
