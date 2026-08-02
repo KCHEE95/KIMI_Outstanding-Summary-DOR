@@ -16,8 +16,8 @@
             {"name": "CNC1", "seq": 1, "is_final": false},
             {"name": "SP1", "seq": 2, "is_final": false},
             {"name": "WD", "seq": 3, "is_final": false},
-            {"name": "PK", "seq": 4, "is_final": false},
-            {"name": "Ship", "seq": 5, "is_final": true}
+            {"name": "TOUCH UP", "seq": 4, "is_final": false},
+            {"name": "PK", "seq": 5, "is_final": true}
           ]
         },
         {
