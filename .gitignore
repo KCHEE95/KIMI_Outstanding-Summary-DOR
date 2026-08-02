@@ -1,12 +1,8 @@
-# Data files (generated at runtime)
-data/
-*.csv
-*.json
+# 保留配置，但忽略 DOR 记录
+!data/parts_config.json
+data/dor_records.csv
 
 # Python
 __pycache__/
 *.pyc
 .env
-
-# Streamlit
-.streamlit/secrets.toml
