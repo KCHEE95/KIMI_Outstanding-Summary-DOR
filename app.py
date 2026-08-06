@@ -1,18 +1,19 @@
 """
-Production DOR Dashboard
-========================
+Production DOR Dashboard with Google Sheets Integration
+========================================================
 Streamlit App for tracking production status across 50+ parts
-with Epicor Kinetic BAQ export integration.
+with Epicor Kinetic BAQ export integration + Google Sheets persistence.
 
 Architecture:
 - Summary Tab: Customer-grouped part overview with completion rates
 - DOR Tabs: Per-part daily operation reports (WIP/OUTPUT/REJECT by operation)
 - Outstanding Tab: Pending items tracking
+- Data Persistence: Google Sheets (DOR records) + Local JSON (Part config)
 
 Data Sources:
 - Epicor BAQ 1: Outstanding Dashboard (Sales Order Lines -> Main Parts only)
 - Epicor BAQ 2: PartOpr + BOM (Operations + Sub Parts structure)
-- Manual DOR entries: Daily WIP/OUTPUT/REJECT quantities
+- Google Sheets: DOR records (WIP/OUTPUT/REJECT)
 
 Author: Generated for production team
 """
@@ -25,11 +26,115 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # ============================================================================
+# GOOGLE SHEETS SETUP
+# ============================================================================
+
+def get_gsheets_client():
+    """Initialize Google Sheets client from Streamlit Secrets"""
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+
+        # Load credentials from Streamlit Secrets
+        creds_dict = dict(st.secrets["google_service_account"])
+
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        client = gspread.authorize(creds)
+        return client
+    except Exception as e:
+        st.error(f"Google Sheets auth failed: {e}")
+        return None
+
+def get_worksheet():
+    """Get the DOR worksheet from Google Sheets"""
+    client = get_gsheets_client()
+    if not client:
+        return None
+
+    try:
+        spreadsheet_id = st.secrets["app"]["spreadsheet_id"]
+        spreadsheet = client.open_by_key(spreadsheet_id)
+
+        # Try to get "DOR" worksheet, create if not exists
+        try:
+            worksheet = spreadsheet.worksheet("DOR")
+        except gspread.WorksheetNotFound:
+            worksheet = spreadsheet.add_worksheet(title="DOR", rows=1000, cols=10)
+            # Add headers
+            worksheet.append_row([
+                "date", "part_num", "sub_part_num", "operation",
+                "wip", "output", "reject", "updated_by", "note", "updated_at"
+            ])
+        return worksheet
+    except Exception as e:
+        st.error(f"Failed to access Google Sheet: {e}")
+        return None
+
+def load_dor_from_gsheets() -> pd.DataFrame:
+    """Load all DOR records from Google Sheets"""
+    worksheet = get_worksheet()
+    if not worksheet:
+        return pd.DataFrame(columns=[
+            'date', 'part_num', 'sub_part_num', 'operation',
+            'wip', 'output', 'reject', 'updated_by', 'note', 'updated_at'
+        ])
+
+    try:
+        records = worksheet.get_all_records()
+        if records:
+            df = pd.DataFrame(records)
+            # Convert numeric columns
+            for col in ['wip', 'output', 'reject']:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+            return df
+        else:
+            return pd.DataFrame(columns=[
+                'date', 'part_num', 'sub_part_num', 'operation',
+                'wip', 'output', 'reject', 'updated_by', 'note', 'updated_at'
+            ])
+    except Exception as e:
+        st.warning(f"Could not load from Google Sheets: {e}")
+        return pd.DataFrame(columns=[
+            'date', 'part_num', 'sub_part_num', 'operation',
+            'wip', 'output', 'reject', 'updated_by', 'note', 'updated_at'
+        ])
+
+def save_dor_to_gsheets(record_dict: dict):
+    """Append a DOR record to Google Sheets"""
+    worksheet = get_worksheet()
+    if not worksheet:
+        return False
+
+    try:
+        worksheet.append_row([
+            record_dict.get('date', ''),
+            record_dict.get('part_num', ''),
+            record_dict.get('sub_part_num', ''),
+            record_dict.get('operation', ''),
+            record_dict.get('wip', 0),
+            record_dict.get('output', 0),
+            record_dict.get('reject', 0),
+            record_dict.get('updated_by', ''),
+            record_dict.get('note', ''),
+            record_dict.get('updated_at', '')
+        ])
+        return True
+    except Exception as e:
+        st.error(f"Failed to save to Google Sheets: {e}")
+        return False
+
+# ============================================================================
 # PAGE CONFIGURATION
 # ============================================================================
 st.set_page_config(
     page_title="Production DOR Dashboard",
-    page_icon="馃彮",
+    page_icon="🏭",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -263,20 +368,18 @@ class DORRecord:
         self.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # ============================================================================
-# DATA MANAGEMENT
+# DATA MANAGEMENT (Local Config + Google Sheets DOR)
 # ============================================================================
 
 class DataManager:
     def __init__(self, data_dir: str = None):
         # Streamlit Cloud compatible: use /tmp for writes
         if data_dir is None:
-            # Try local first, fallback to /tmp
             local_dir = Path("data")
             tmp_dir = Path("/tmp") / "production_dor_data"
 
             try:
                 local_dir.mkdir(parents=True, exist_ok=True)
-                # Test write permission
                 test_file = local_dir / ".write_test"
                 test_file.write_text("test")
                 test_file.unlink()
@@ -289,12 +392,15 @@ class DataManager:
             self.data_dir.mkdir(parents=True, exist_ok=True)
 
         self.parts_file = self.data_dir / "parts_config.json"
-        self.dor_file = self.data_dir / "dor_records.csv"
         self.parts = {}
+
+        # DOR records now come from Google Sheets
         self.dor_records = pd.DataFrame()
+
         self._load_data()
 
     def _load_data(self):
+        # Load Part Config from local JSON
         if self.parts_file.exists():
             with open(self.parts_file, 'r') as f:
                 data = json.load(f)
@@ -302,13 +408,8 @@ class DataManager:
         else:
             self._create_demo_data()
 
-        if self.dor_file.exists():
-            self.dor_records = pd.read_csv(self.dor_file)
-        else:
-            self.dor_records = pd.DataFrame(columns=[
-                'date', 'part_num', 'sub_part_num', 'operation',
-                'wip', 'output', 'reject', 'updated_by', 'note', 'updated_at'
-            ])
+        # Load DOR records from Google Sheets
+        self.dor_records = load_dor_from_gsheets()
 
     def _deserialize_parts(self, data: dict):
         for p_data in data.get('parts', []):
@@ -384,7 +485,6 @@ class DataManager:
         self._save_parts()
 
     def _save_parts(self):
-        # Ensure directory exists before writing
         self.data_dir.mkdir(parents=True, exist_ok=True)
         data = {'parts': []}
         for part in self.parts.values():
@@ -413,9 +513,8 @@ class DataManager:
             json.dump(data, f, indent=2)
 
     def save_dor_record(self, record: DORRecord):
-        # Ensure directory exists before writing
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        new_row = pd.DataFrame([{
+        """Save DOR record to Google Sheets"""
+        record_dict = {
             'date': record.date,
             'part_num': record.part_num,
             'sub_part_num': record.sub_part_num,
@@ -426,9 +525,17 @@ class DataManager:
             'updated_by': record.updated_by,
             'note': record.note,
             'updated_at': record.updated_at
-        }])
-        self.dor_records = pd.concat([self.dor_records, new_row], ignore_index=True)
-        self.dor_records.to_csv(self.dor_file, index=False)
+        }
+
+        # Save to Google Sheets
+        success = save_dor_to_gsheets(record_dict)
+
+        if success:
+            # Also update local cache
+            new_row = pd.DataFrame([record_dict])
+            self.dor_records = pd.concat([self.dor_records, new_row], ignore_index=True)
+            return True
+        return False
 
     def get_dor_for_part(self, part_num: str, date: str = None):
         df = self.dor_records[self.dor_records['part_num'] == part_num]
@@ -595,9 +702,16 @@ def render_summary_page(dm: DataManager):
     st.markdown("""
     <h1 style="margin: 0; font-size: 26px; font-weight: 700;">&#128202; Production Summary Board</h1>
     <p style="margin: 6px 0 24px 0; color: #94a3b8; font-size: 13px;">
-        Data: Epicor BAQ | Status: Manual DOR Update | Tracking 50 Parts
+        Data: Epicor BAQ | Status: Manual DOR Update | Tracking 50 Parts | DOR: Google Sheets
     </p>
     """, unsafe_allow_html=True)
+
+    # Show connection status
+    worksheet = get_worksheet()
+    if worksheet:
+        st.success("&#9989; Connected to Google Sheets")
+    else:
+        st.warning("&#9888; Google Sheets not connected - check Secrets configuration")
 
     col1, col2, col3, col4 = st.columns([2, 2, 3, 1])
 
@@ -760,7 +874,7 @@ def render_summary_page(dm: DataManager):
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================================
-# DOR PAGE - FIXED: WIP / OUTPUT / REJECT columns
+# DOR PAGE
 # ============================================================================
 
 def render_dor_page(dm: DataManager, part_num: str):
@@ -795,6 +909,8 @@ def render_dor_page(dm: DataManager, part_num: str):
         st.write("")
         st.write("")
         if st.button("&#128260; Load History", key=f"dor_load_{part_num}"):
+            # Refresh from Google Sheets
+            dm.dor_records = load_dor_from_gsheets()
             st.rerun()
     with col3:
         st.write("")
@@ -826,7 +942,6 @@ def render_dor_page(dm: DataManager, part_num: str):
             st.markdown("<h4 style='margin: 20px 0 12px 0; font-size: 14px;'>&#128221; Daily DOR Entry</h4>", unsafe_allow_html=True)
 
             with st.form(key=f"dor_form_{part_num}_{sub_part.part_num}"):
-                # Header row: Operation | Target Qty | Cumulative | WIP | OUTPUT | REJECT | Note
                 cols = st.columns([1.3, 0.9, 1.0, 0.9, 0.9, 0.9, 1.8, 0.8])
                 headers = ["Operation", "Target", "Cumulative", "WIP", "OUTPUT", "REJECT", "Note", ""]
                 for col, header in zip(cols, headers):
@@ -841,7 +956,6 @@ def render_dor_page(dm: DataManager, part_num: str):
                         (existing['operation'] == op.name)
                     ]
 
-                    # Calculate cumulative output across all dates
                     cumul_df = dm.dor_records[
                         (dm.dor_records['part_num'] == part_num) &
                         (dm.dor_records['sub_part_num'] == sub_part.part_num) &
@@ -915,6 +1029,7 @@ def render_dor_page(dm: DataManager, part_num: str):
 
                 if submitted:
                     user_name = st.session_state.get('user_name', 'Anonymous')
+                    save_count = 0
                     for fd in form_data:
                         record = DORRecord(
                             date=date_str,
@@ -927,9 +1042,14 @@ def render_dor_page(dm: DataManager, part_num: str):
                             updated_by=user_name,
                             note=fd['note']
                         )
-                        dm.save_dor_record(record)
-                    st.success("&#9989; DOR Saved Successfully!")
-                    st.balloons()
+                        if dm.save_dor_record(record):
+                            save_count += 1
+
+                    if save_count > 0:
+                        st.success(f"&#9989; {save_count} DOR records saved to Google Sheets!")
+                        st.balloons()
+                    else:
+                        st.error("&#10060; Failed to save to Google Sheets. Check Secrets configuration.")
 
     st.markdown("<h3 style='margin: 24px 0 16px 0;'>&#128220; DOR History</h3>", unsafe_allow_html=True)
     hist_df = dm.get_dor_for_part(part_num)
@@ -1075,7 +1195,7 @@ def main():
         if st.button("&#9888; Outstanding", use_container_width=True):
             st.session_state.current_page = "outstanding"
         st.divider()
-        st.info("&#128161; Tips:\n- Fill DOR daily\n- Add notes for abnormalities\n- Completion rate auto-calculated")
+        st.info("&#128161; Tips:\n- Fill DOR daily\n- Add notes for abnormalities\n- Completion rate auto-calculated\n- Data saved to Google Sheets")
 
     part_keys = sorted(dm.parts.keys())[:8]
     tab_labels = ["&#128202; Summary", "&#9888; Outstanding"] + [f"&#128203; {p}" for p in part_keys]
