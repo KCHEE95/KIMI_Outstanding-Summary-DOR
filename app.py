@@ -19,6 +19,13 @@ Author: Generated for production team
 """
 
 import streamlit as st
+
+# 测试 gspread 是否安装
+try:
+    import gspread
+    st.sidebar.success("✅ gspread installed")
+except ImportError:
+    st.sidebar.error("❌ gspread NOT installed - check requirements.txt")
 import pandas as pd
 import json
 import os
